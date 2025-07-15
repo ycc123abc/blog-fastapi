@@ -39,9 +39,10 @@ async def upload_markdown_article(
             favor=0,
             category_id=category_id
         )
-
+        print(tag_ids)
         # 添加标签关联
-        await new_blog.tags.add(*tag_ids)
+        tags = await Tag.filter(id__in=tag_ids)
+        await new_blog.tags.add(*tags)
 
         # 创建图片记录
         for img_path in image_paths:
@@ -148,5 +149,27 @@ async def create_tag(name: str = Form(...)):
             "tag_id": str(new_tag.id),
             "name": new_tag.name,
             "create_time": new_tag.create_time.isoformat()
+        }
+    })
+
+
+
+@router.post("/category")
+async def create_tag(name: str = Form(...)):
+    print(name)
+    # 检查目录是否已存在
+    existing_category = await Category.filter(name=name).first()
+    if existing_category:
+        raise HTTPException(status_code=400, detail="标签已存在")
+
+    # 创建新标签
+    new_category = await Category.create(name=name)
+
+    return JSONResponse({
+        "status": "success",
+        "data": {
+            "category_id": str(new_category.id),
+            "name": new_category.name,
+            "create_time": new_category.create_time.isoformat()
         }
     })
