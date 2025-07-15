@@ -1,7 +1,7 @@
 from tortoise.models import Model
 from tortoise import fields
 import uuid  # 自动生成uuid要用的
-
+from .fields import ImageField
 
 class Category(Model):
     id = fields.UUIDField(pk=True, default=uuid.uuid4)
@@ -20,7 +20,7 @@ class Tag(Model):
     
 class Blog(Model):
     id = fields.UUIDField(pk=True, default=uuid.uuid4)
-    cover_image=fields.TextField(null=True)  # 添加封面图路径
+    cover=fields.TextField()
     title = fields.TextField()
     content=fields.TextField()
     favor=fields.IntField()

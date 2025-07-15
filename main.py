@@ -11,7 +11,7 @@ app_api = FastAPI(  # 自定义：api测试doc的标题
     version="1.0.0"
 )
 # 挂载静态文件目录
-app_api.mount("/media", StaticFiles(directory="app/static/media"), name="media")
+app_api.mount("/static", StaticFiles(directory="app/static"), name="static")
 app_api.include_router(router)
 register_tortoise(
     app=app_api,  # FastAPI实例

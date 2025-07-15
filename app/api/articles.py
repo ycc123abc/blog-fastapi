@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 # sys.path.append(str(Path(__file__).parent.parent.parent))
 from app.models.models import Blog, Category, Tag, BlogImage
+from app.utils.filework import file_work
 router = APIRouter(prefix="/articles", tags=["articles"])
 
 # 配置图片存储路径
@@ -21,15 +22,15 @@ async def upload_markdown_article(
     title: str = Form(...),
     category_id: str = Form(...),
     tag_ids: list[str] = Form(...),
-    markdown_file: UploadFile = File(...)
+    markdown_file: UploadFile = File(...),
+    cover: UploadFile = File(...)
 ):
     # 读取Markdown内容
     markdown_content = await markdown_file.read()
     markdown_str = markdown_content.decode("utf-8")
-
+    await file_work(cover)
     # 提取并处理图片
     updated_content, image_paths = await process_markdown_images(markdown_str)
-
     # 事务中创建文章和图片记录
     async with in_transaction():
         # 创建博客文章
@@ -37,8 +38,10 @@ async def upload_markdown_article(
             title=title,
             content=updated_content,
             favor=0,
-            category_id=category_id
+            category_id=category_id,
+            cover=cover.filename
         )
+
         print(tag_ids)
         # 添加标签关联
         tags = await Tag.filter(id__in=tag_ids)
@@ -155,7 +158,7 @@ async def create_tag(name: str = Form(...)):
 
 
 @router.post("/category")
-async def create_tag(name: str = Form(...)):
+async def create_category(name: str = Form(...)):
     print(name)
     # 检查目录是否已存在
     existing_category = await Category.filter(name=name).first()
