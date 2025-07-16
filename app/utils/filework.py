@@ -1,6 +1,3 @@
-
-
-
 from anyio import Path
 from fastapi import UploadFile
 from fastapi.staticfiles import StaticFiles

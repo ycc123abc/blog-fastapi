@@ -1,6 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
-import sys
+
 from pathlib import Path
 
 from tortoise.transactions import in_transaction
@@ -8,9 +8,12 @@ import uuid
 import os
 from pathlib import Path
 import re
-# sys.path.append(str(Path(__file__).parent.parent.parent))
+
 from app.models.models import Blog, Category, Tag, BlogImage
-from app.utils.filework import file_work
+from app.utils import file_work,paginate
+from app.schemas import PaginationParams, PaginatedResponse
+
+from pydantic import BaseModel
 router = APIRouter(prefix="/articles", tags=["articles"])
 
 # 配置图片存储路径
@@ -176,3 +179,26 @@ async def create_category(name: str = Form(...)):
             "create_time": new_category.create_time.isoformat()
         }
     })
+
+
+
+# 响应模型
+class ItemOut(BaseModel):
+    id: int
+    title: str
+    favor: int
+    create_time: str = None
+    update_time: str = None
+    category_id: str = None
+    cover: str = None
+
+    class Config:
+        orm_mode = True
+
+@router.get("/list/",response_model=PaginatedResponse[ItemOut])
+async def get_article_list(params: PaginationParams = Depends()):
+    count = await Blog.all().count()
+    query=await Blog.all().offset((params.page - 1) * params.size).limit(params.size)
+    items, total = await paginate(query, params,count)
+    return PaginatedResponse.create(total, items, params)
+
