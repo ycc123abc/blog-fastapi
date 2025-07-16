@@ -12,8 +12,9 @@ import re
 from app.models.models import Blog, Category, Tag, BlogImage
 from app.utils import file_work,paginate
 from app.schemas import PaginationParams, PaginatedResponse
-
+import datetime
 from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 router = APIRouter(prefix="/articles", tags=["articles"])
 
 # 配置图片存储路径
@@ -184,21 +185,28 @@ async def create_category(name: str = Form(...)):
 
 # 响应模型
 class ItemOut(BaseModel):
-    id: int
+    id: uuid.UUID
     title: str
     favor: int
-    create_time: str = None
-    update_time: str = None
-    category_id: str = None
+    create_time: datetime.datetime = None
+    update_time: datetime.datetime = None
+    category: uuid.UUID = None
     cover: str = None
+
+    @field_serializer('create_time', 'update_time')
+    def serialize_dt(self, dt: datetime.datetime, _info):
+        
+        if dt is None:
+            return None
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     class Config:
         orm_mode = True
+
 
 @router.get("/list/",response_model=PaginatedResponse[ItemOut])
 async def get_article_list(params: PaginationParams = Depends()):
     count = await Blog.all().count()
     query=await Blog.all().offset((params.page - 1) * params.size).limit(params.size)
-    items, total = await paginate(query, params,count)
-    return PaginatedResponse.create(total, items, params)
+    return PaginatedResponse.create(count, query, params)
 

@@ -2,6 +2,10 @@ from tortoise.models import Model
 from tortoise import fields
 import uuid  # 自动生成uuid要用的
 from .fields import ImageField
+from tortoise.signals import pre_save
+
+
+
 
 class Category(Model):
     id = fields.UUIDField(pk=True, default=uuid.uuid4)
@@ -28,6 +32,7 @@ class Blog(Model):
     update_time=fields.DatetimeField(auto_now=True)
     category=fields.ForeignKeyField('models.Category',related_name='blogs')
     tags=fields.ManyToManyField('models.Tag',related_name='blogs')
+
 
 # 添加图片模型
 class BlogImage(Model):
