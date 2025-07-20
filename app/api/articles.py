@@ -8,20 +8,19 @@ import uuid
 import os
 from pathlib import Path
 import re
-
+from typing import List 
 from app.models.models import Blog, Category, Tag, BlogImage
-from app.utils import file_work,paginate
-from app.schemas import PaginationParams, PaginatedResponse
+from app.utils import file_work,apply_search,apply_pagination,apply_sort
+from app.schemas import PaginationParams, PaginatedResponse,Homelist
 import datetime
-from pydantic import BaseModel
-from pydantic import BaseModel, field_serializer
-router = APIRouter(prefix="/articles", tags=["articles"])
+from pydantic import BaseModel, field_serializer,validator
+articlesrouter = APIRouter(prefix="/articles", tags=["articles"])
 
 # 配置图片存储路径
 MEDIA_DIR = Path("app/static/media")
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
-@router.post("/upload-markdown")  # 上传Markdown文章
+@articlesrouter.post("/upload-markdown")  # 上传Markdown文章
 async def upload_markdown_article(
     title: str = Form(...),
     category_id: str = Form(...),
@@ -45,7 +44,9 @@ async def upload_markdown_article(
             category_id=category_id,
             cover=cover.filename
         )
-
+        user = await User.get(id=1)
+        user.articles_num += 1
+        await user.save()
         print(tag_ids)
         # 添加标签关联
         tags = await Tag.filter(id__in=tag_ids)
@@ -106,7 +107,7 @@ async def save_base64_image(base64_str):
     return f"/media/{filename}"
 
 
-@router.get("/{article_id}")
+@articlesrouter.get("/{article_id}")
 async def get_article(article_id: str):
     # 查询文章并预加载关联数据
     article = await Blog.filter(id=article_id).prefetch_related(
@@ -139,47 +140,7 @@ async def get_article(article_id: str):
     #     } for img in article.images]
     # }
 
-@router.post("/tags")
-async def create_tag(name: str = Form(...)):
-    print(name)
-    # 检查标签是否已存在
-    existing_tag = await Tag.filter(name=name).first()
-    if existing_tag:
-        raise HTTPException(status_code=400, detail="标签已存在")
 
-    # 创建新标签
-    new_tag = await Tag.create(name=name)
-
-    return JSONResponse({
-        "status": "success",
-        "data": {
-            "tag_id": str(new_tag.id),
-            "name": new_tag.name,
-            "create_time": new_tag.create_time.isoformat()
-        }
-    })
-
-
-
-@router.post("/category")
-async def create_category(name: str = Form(...)):
-    print(name)
-    # 检查目录是否已存在
-    existing_category = await Category.filter(name=name).first()
-    if existing_category:
-        raise HTTPException(status_code=400, detail="标签已存在")
-
-    # 创建新标签
-    new_category = await Category.create(name=name)
-
-    return JSONResponse({
-        "status": "success",
-        "data": {
-            "category_id": str(new_category.id),
-            "name": new_category.name,
-            "create_time": new_category.create_time.isoformat()
-        }
-    })
 
 
 
@@ -187,11 +148,12 @@ async def create_category(name: str = Form(...)):
 class ItemOut(BaseModel):
     id: uuid.UUID
     title: str
-    favor: int
+    favor: int=0
     create_time: datetime.datetime = None
     update_time: datetime.datetime = None
-    category: uuid.UUID = None
+    tags: List[str] = [] 
     cover: str = None
+    views: int = 0
 
     @field_serializer('create_time', 'update_time')
     def serialize_dt(self, dt: datetime.datetime, _info):
@@ -200,13 +162,48 @@ class ItemOut(BaseModel):
             return None
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    class Config:
-        orm_mode = True
+
+    @validator('tags', pre=True)
+    def convert_category_to_name(cls, v):
+            return [v_.name for v_ in v] if v else []
 
 
-@router.get("/list/",response_model=PaginatedResponse[ItemOut])
+@articlesrouter.get("/homelist/", response_model=Homelist[ItemOut])
+async def get_article_list():
+    query = await Blog.all().prefetch_related("tags").offset(0).limit(5)
+    return Homelist.create(query)
+
+
+@articlesrouter.get("/list/", response_model=PaginatedResponse[ItemOut])
 async def get_article_list(params: PaginationParams = Depends()):
-    count = await Blog.all().count()
-    query=await Blog.all().offset((params.page - 1) * params.size).limit(params.size)
-    return PaginatedResponse.create(count, query, params)
+    # 1. 构建基础查询
+    base_query = Blog.all().prefetch_related('tags')
+    
+    # 2. 应用搜索条件
+    search_query = await apply_search(
+        query=base_query,
+        search_term=params.search,
+        search_fields=["title", "tags__name"]
+    )
+    
+    # 3. 应用排序
+    sorted_query = apply_sort(
+        query=search_query,
+        sort_field="create_time",
+        sort_direction=params.sort
+    )
+    
+    # 4. 应用分页
+    paginated_data, total = await apply_pagination(
+        query=sorted_query,
+        page=params.page,
+        size=params.size
+    )
+    
+    # 5. 返回分页响应
+    return PaginatedResponse.create(total, paginated_data, params)
+
+
+
+
 

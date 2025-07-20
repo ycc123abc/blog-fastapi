@@ -1,14 +1,16 @@
 from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
 from typing import Generic, TypeVar, List
+from typing import Optional,T
 T = TypeVar('T')
 # 分页参数
 class PaginationParams(BaseModel):
-    page: int = Field(1, ge=1, description="页码")
-    size: int = Field(20, ge=1, le=100, description="每页数量")
+    page: int = 1
+    size: int = 10
+    search: Optional[str] = None
+    sort: Optional[str] = "desc"  # asc/desc
 
 # 分页响应
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     total: int
     page: int
     size: int
