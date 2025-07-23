@@ -7,11 +7,6 @@ from passlib.context import CryptContext
 
 
 
-class Category(Model):
-    id = fields.UUIDField(pk=True, default=uuid.uuid4)
-    name = fields.TextField()
-    create_time=fields.DatetimeField(auto_now_add=True)
-    update_time=fields.DatetimeField(auto_now=True)
 
 class Tag(Model):
     id = fields.UUIDField(pk=True, default=uuid.uuid4)
@@ -31,7 +26,6 @@ class Blog(Model):
     views=fields.IntField()
     create_time=fields.DatetimeField(auto_now_add=True)
     update_time=fields.DatetimeField(auto_now=True)
-    category=fields.ForeignKeyField('models.Category',related_name='blogs')
     tags=fields.ManyToManyField('models.Tag',related_name='blogs')
 
 

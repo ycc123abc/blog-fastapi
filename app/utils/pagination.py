@@ -1,8 +1,7 @@
-from tortoise.queryset import QuerySet
-from app.schemas.pagination import PaginationParams
 
 
-from tortoise.queryset import QuerySet
+
+from tortoise.queryset import QuerySet,Q
 from app.schemas.pagination import PaginationParams
 
 async def apply_search(query: QuerySet, search_term: str, search_fields: list) -> QuerySet:
@@ -21,11 +20,13 @@ async def apply_search(query: QuerySet, search_term: str, search_fields: list) -
         return query
     
     # 构建 OR 条件
-    conditions = []
+
+
+    q_object = Q()
     for field in search_fields:
-        conditions.append({f"{field}__icontains": search_term})
-    
-    return query.filter_or(*conditions)
+        print(field,search_fields)
+        q_object |= Q(**{f"{field}__icontains": search_term})
+    return query.filter(q_object)
 
 def apply_sort(query: QuerySet, sort_field: str, sort_direction: str = "desc") -> QuerySet:
     """

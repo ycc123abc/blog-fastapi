@@ -1,1 +1,1 @@
-from .models import Blog, Category, Tag, BlogImage,User
+from .models import Blog, Tag, BlogImage,User

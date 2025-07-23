@@ -6,8 +6,14 @@ T = TypeVar('T')
 class PaginationParams(BaseModel):
     page: int = 1
     size: int = 10
-    search: Optional[str] = None
-    sort: Optional[str] = "desc"  # asc/desc
+    # search: Optional[str] = None
+    # sort: Optional[str] = "desc"  # asc/desc
+
+class ArticlePageParams(PaginationParams):
+    search:  Optional[str] = None
+    search_fields: str = "tag,stitle"
+    sort: Optional[str] = "desc"
+
 
 # 分页响应
 class PaginatedResponse(BaseModel, Generic[T]):
@@ -20,6 +26,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     @classmethod
     def create(cls, total: int, items: List[T], params: PaginationParams):
         total_pages = (total + params.size - 1) // params.size
+        print(total_pages)
         return cls(
             total=total,
             page=params.page,

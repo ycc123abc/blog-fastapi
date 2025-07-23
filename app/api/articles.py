@@ -9,9 +9,9 @@ import os
 from pathlib import Path
 import re
 from typing import List 
-from app.models.models import Blog, Category, Tag, BlogImage
+from app.models.models import Blog, Tag, BlogImage
 from app.utils import file_work,apply_search,apply_pagination,apply_sort
-from app.schemas import PaginationParams, PaginatedResponse,Homelist
+from app.schemas import PaginationParams, PaginatedResponse,Homelist,ArticlePageParams
 import datetime
 from pydantic import BaseModel, field_serializer,validator
 articlesrouter = APIRouter(prefix="/articles", tags=["articles"])
@@ -174,16 +174,16 @@ async def get_article_list():
     return Homelist.create(query)
 
 
-@articlesrouter.get("/list/", response_model=PaginatedResponse[ItemOut])
-async def get_article_list(params: PaginationParams = Depends()):
+@articlesrouter.get("", response_model=PaginatedResponse[ItemOut])
+async def get_article_list(params: ArticlePageParams = Depends()):
     # 1. 构建基础查询
     base_query = Blog.all().prefetch_related('tags')
-    
+    print(params.search_fields)
     # 2. 应用搜索条件
     search_query = await apply_search(
         query=base_query,
         search_term=params.search,
-        search_fields=["title", "tags__name"]
+        search_fields=params.search_fields.split(",")    #["title", "tags__name"]
     )
     
     # 3. 应用排序
